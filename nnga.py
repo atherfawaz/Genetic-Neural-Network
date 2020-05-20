@@ -8,22 +8,24 @@ import time
 # GLOBALS
 CROSS = 0.5
 GENERATIONS = 200
-N_POPS = 20
+SELECTION_RATE = 20
 NETWORK = [4, 10, 3]
 MUTATION_RATE = 0.1
 CROSSOVER_RATE = 0.4
 RETENTION_RATE = 0.4
 SLEEP_TIMEOUT = 1
 
+
 class NeuralNetwork:
 
     def __init__(self, features, classes):
-        self.n_pops = N_POPS
-        self.net_size = NETWORK
-        self.network = [Connections(self.net_size) for i in range(self.n_pops)]
+        self.selection_rate = SELECTION_RATE
         self.mutation_rate = MUTATION_RATE
         self.crossover_rate = CROSSOVER_RATE
-        self.retain_rate = RETENTION_RATE
+        self.retention_rate = RETENTION_RATE
+        self.dimensions = NETWORK
+        self.network = [Connections(self.dimensions)
+                        for i in range(self.selection_rate)]
         self.features = features[:]
         self.classes = classes[:]
 
@@ -37,9 +39,9 @@ class NeuralNetwork:
     def print_processing(self, generation):
         if (generation % 50 is 0):
             print('Generation: ', generation)
-            print('Accuracy: ', self.get_all_accuracy()[0])
+            print('Accuracy: ', self.accuracy()[0])
 
-    def begin(self):
+    def train(self):
         print('Starting new phase...')
         for generation in range(GENERATIONS):
             print('Generation: ' + str(generation) +
@@ -48,43 +50,31 @@ class NeuralNetwork:
         print('Phase complete...')
         time.sleep(SLEEP_TIMEOUT)
 
-    def crossover(self, father, mother):
-        temp_network = copy.deepcopy(father)
+    def genetic_crossover(self, parent_a, parent_b):
+        temp_network = copy.deepcopy(parent_a)
 
-        # cross-over bias
         for _ in range(self.network[0].bias_nitem):
-            # get some random points
-            layer, point = self.get_random_point('bias')
-            # replace genetic (bias) with mother's value
+            layer, point = self.fetch_point('bias')
             if (random.uniform(0, 1) < self.crossover_rate):
-                temp_network.biases[layer][point] = mother.biases[layer][point]
+                temp_network.biases[layer][point] = parent_b.biases[layer][point]
 
-        # cross-over weight
         for _ in range(self.network[0].weight_nitem):
-            # get some random points
-            layer, point = self.get_random_point('weight')
-            # replace genetic (weight) with mother's value
-            if random.uniform(0, 1) < self.crossover_rate:
-                temp_network.weights[layer][point] = mother.weights[layer][point]
+            layer, point = self.fetch_point('weight')
+            if (random.uniform(0, 1) < self.crossover_rate):
+                temp_network.weights[layer][point] = parent_b.weights[layer][point]
 
         return temp_network
 
-    def mutation(self, child):
+    def genetic_mutation(self, child):
         temp_network = copy.deepcopy(child)
 
-        # mutate bias
         for _ in range(self.network[0].bias_nitem):
-            # get some random points
-            layer, point = self.get_random_point('bias')
-            # add some random value between -0.5 and 0.5
+            layer, point = self.fetch_point('bias')
             if random.uniform(0, 1) < self.mutation_rate:
                 temp_network.biases[layer][point] += random.uniform(-0.5, 0.5)
 
-        # mutate weight
         for _ in range(self.network[0].weight_nitem):
-            # get some random points
-            layer, point = self.get_random_point('weight')
-            # add some random value between -0.5 and 0.5
+            layer, point = self.fetch_point('weight')
             if random.uniform(0, 1) < self.mutation_rate:
                 temp_network.weights[layer][point[0],
                                             point[1]] += random.uniform(-0.5, 0.5)
@@ -92,24 +82,25 @@ class NeuralNetwork:
         return temp_network
 
     def evolve(self):
-        score_list = list(zip(self.network, self.get_all_scores()))
+        score_list = list(zip(self.network, self.cost_function()))
         score_list.sort(key=lambda x: x[1])
         score_list = [object[0] for object in score_list]
 
-        best_retain = int(self.n_pops * self.retain_rate)
+        best_retain = int(self.selection_rate * self.retention_rate)
         score_list_best = score_list[:best_retain]
 
-        retain_ordinary = int((self.n_pops - best_retain) * self.retain_rate)
+        retain_ordinary = int(
+            (self.selection_rate - best_retain) * self.retention_rate)
         for _ in range(random.randint(0, retain_ordinary)):
             score_list_best.append(random.choice(score_list[best_retain:]))
 
-        while(len(score_list_best) < self.n_pops):
+        while(len(score_list_best) < self.selection_rate):
             parent = random.choice(score_list_best)
             another_parent = random.choice(score_list_best)
 
             if (parent != another_parent):
-                reproduce = self.crossover(parent, another_parent)
-                reproduce = self.mutation(reproduce)
+                reproduce = self.genetic_crossover(parent, another_parent)
+                reproduce = self.genetic_mutation(reproduce)
                 score_list_best.append(reproduce)
 
         self.network = score_list_best
@@ -120,15 +111,15 @@ class NeuralNetwork:
         formatted_val = "{:.2f}".format(val)
         return val
 
-    def get_all_accuracy(self):
+    def accuracy(self):
         val = [network.accuracy(self.features, self.classes)
                for network in self.network]
         return val
 
-    def get_all_scores(self):
+    def cost_function(self):
         return [network.score(self.features, self.classes) for network in self.network]
 
-    def get_random_point(self, type):
+    def fetch_point(self, type):
         temp = self.network[0]
         layer, point = random.randint(0, temp.layer_count - 2), 0
         if (type == 'weight'):
@@ -253,7 +244,7 @@ def main():
         features_a, classes_a)
 
     # start training
-    neural_network.begin()
+    neural_network.train()
 
     # get training accuracy on first training set
     print("Accuracy on training dataset (Phase 1): ",
@@ -267,7 +258,7 @@ def main():
           neural_network.get_highest_accuracy())
 
     # train on previous testing data
-    neural_network.begin()
+    neural_network.train()
 
     # get training accuracy on second training set
     print("Accuracy on training dataset (Phase 2): ",
