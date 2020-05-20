@@ -7,6 +7,7 @@ import time
 
 # GLOBALS
 CROSS = 0.5
+THRESHOLD = 0.5
 GENERATIONS = 200
 SELECTION_RATE = 20
 NETWORK = [4, 10, 3]
@@ -44,8 +45,8 @@ class NeuralNetwork:
     def train(self):
         print('Starting new phase...')
         for generation in range(GENERATIONS):
-            print('Generation: ' + str(generation) +
-                  ' ; Accuracy: ' + str(self.calculate_accuracy()), '%')
+            accuracy = self.calculate_accuracy()
+            print('Generation: ' + str(generation) + ' ; Accuracy: ' + str(accuracy) + '%')
             self.natural_selection()
         print('Phase complete...')
         time.sleep(SLEEP_TIMEOUT)
