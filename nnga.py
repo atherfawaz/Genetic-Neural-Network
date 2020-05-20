@@ -11,8 +11,8 @@ GENERATIONS = 200
 SELECTION_RATE = 20
 NETWORK = [4, 10, 3]
 MUTATION_RATE = 0.1
-CROSSOVER_RATE = 0.4
-RETENTION_RATE = 0.4
+CROSSOVER_RATE = 0.3
+RETENTION_RATE = 0.3
 SLEEP_TIMEOUT = 1
 
 
@@ -33,7 +33,7 @@ class NeuralNetwork:
         self.features = features[:]
         self.classes = classes[:]
 
-    def generate_neural_network(features, classes):
+    def generate(features, classes):
         return NeuralNetwork(features, classes)
 
     def print_processing(self, generation):
@@ -45,12 +45,13 @@ class NeuralNetwork:
         print('Starting new phase...')
         for generation in range(GENERATIONS):
             print('Generation: ' + str(generation) +
-                  ', accuracy: ' + str(self.get_highest_accuracy()))
-            self.evolve()
+                  ' ; Accuracy: ' + str(self.calculate_accuracy()), '%')
+            self.natural_selection()
         print('Phase complete...')
         time.sleep(SLEEP_TIMEOUT)
 
     def genetic_crossover(self, parent_a, parent_b):
+
         temp_network = copy.deepcopy(parent_a)
 
         for _ in range(self.network[0].bias_nitem):
@@ -66,22 +67,24 @@ class NeuralNetwork:
         return temp_network
 
     def genetic_mutation(self, child):
+
         temp_network = copy.deepcopy(child)
 
         for _ in range(self.network[0].bias_nitem):
             layer, point = self.fetch_point('bias')
-            if random.uniform(0, 1) < self.mutation_rate:
+            if (random.uniform(0, 1) < self.mutation_rate):
                 temp_network.biases[layer][point] += random.uniform(-0.5, 0.5)
 
         for _ in range(self.network[0].weight_nitem):
             layer, point = self.fetch_point('weight')
-            if random.uniform(0, 1) < self.mutation_rate:
+            if (random.uniform(0, 1) < self.mutation_rate):
                 temp_network.weights[layer][point[0],
                                             point[1]] += random.uniform(-0.5, 0.5)
 
         return temp_network
 
-    def evolve(self):
+    def natural_selection(self):
+
         score_list = list(zip(self.network, self.cost_function()))
         score_list.sort(key=lambda x: x[1])
         score_list = [object[0] for object in score_list]
@@ -95,21 +98,21 @@ class NeuralNetwork:
             score_list_best.append(random.choice(score_list[best_retain:]))
 
         while(len(score_list_best) < self.selection_rate):
-            parent = random.choice(score_list_best)
-            another_parent = random.choice(score_list_best)
+            parent_a = random.choice(score_list_best)
+            parent_b = random.choice(score_list_best)
 
-            if (parent != another_parent):
-                reproduce = self.genetic_crossover(parent, another_parent)
+            if (parent_a != parent_b):
+                reproduce = self.genetic_crossover(parent_a, parent_b)
                 reproduce = self.genetic_mutation(reproduce)
                 score_list_best.append(reproduce)
 
         self.network = score_list_best
 
-    def get_highest_accuracy(self):
+    def calculate_accuracy(self):
         val = [network.accuracy(self.features, self.classes)
                for network in self.network][0]
         formatted_val = "{:.2f}".format(val)
-        return val
+        return formatted_val
 
     def accuracy(self):
         val = [network.accuracy(self.features, self.classes)
@@ -144,10 +147,10 @@ class Connections:
         self.weight_nitem = sum(
             [self.weights[i].size for i in range(self.layer_count - 2)])
 
-    def forward_propagation(self, a):
-        for b, w in zip(self.biases, self.weights):
-            a = self.sigmoid(np.dot(w, a) + b)
-        return a
+    def forward_propagation(self, val):
+        for biases, weights in zip(self.biases, self.weights):
+            val = self.sigmoid(np.dot(weights, val) + biases)
+        return val
 
     def sigmoid(self, z):
         return 1.0/(1.0 + np.exp(-z))
@@ -166,10 +169,6 @@ class Connections:
             output = self.forward_propagation(features[i].reshape(-1, 1))
             accuracy += int(np.argmax(output) == np.argmax(classes[i]))
         return accuracy / features.shape[0] * 100
-
-    def __str__(self):
-        return "\nBias:\n\n" + str(self.biases) + "\nWeights:\n\n" + str(self.weights) + "\n\n"
-
 
 def fetch_dataset():
 
@@ -206,9 +205,9 @@ def distribute_data(data):
     features = data[:, :4]
     classes = data[:, 4]
     classes = classes.reshape(-1, 1)
-    enc = OneHotEncoder()
-    enc.fit(classes)
-    classes = enc.transform(classes).toarray()
+    encoder = OneHotEncoder()
+    encoder.fit(classes)
+    classes = encoder.transform(classes).toarray()
 
     return (features, classes)
 
@@ -230,46 +229,46 @@ def main():
 
     data = fetch_dataset()
 
-    # shuffle
+    # shuffle dataset
     np.take(data, np.random.permutation(data.shape[0]), axis=0, out=data)
     data = np.array(data)
 
     # get features and classes separated
     (features, classes) = distribute_data(data)
 
+    # separate for two-fold cross validation
     (features_a, classes_a, features_b, classes_b) = separate_data(features, classes)
 
-    # establish a neural network
-    neural_network = NeuralNetwork.generate_neural_network(
-        features_a, classes_a)
+    # generate a neural network
+    neural_network = NeuralNetwork.generate(features_a, classes_a)
 
     # start training
     neural_network.train()
 
     # get training accuracy on first training set
     print("Accuracy on training dataset (Phase 1): ",
-          neural_network.get_highest_accuracy())
+          neural_network.calculate_accuracy())
 
     # update parameters of features and classes
     neural_network.set_data(features_b, classes_b)
 
     # test on testing dataset
     print("Accuracy on testing dataset (Phase 1): ",
-          neural_network.get_highest_accuracy())
+          neural_network.calculate_accuracy())
 
     # train on previous testing data
     neural_network.train()
 
     # get training accuracy on second training set
     print("Accuracy on training dataset (Phase 2): ",
-          neural_network.get_highest_accuracy())
+          neural_network.calculate_accuracy())
 
     # update parameters of features and classes
     neural_network.set_data(features_a, classes_a)
 
-    # test on testing dataset
+    # test on previous training dataset
     print("Accuracy on testing dataset (Phase 2): ",
-          neural_network.get_highest_accuracy())
+          neural_network.calculate_accuracy())
 
 
 if __name__ == "__main__":
