@@ -1,2 +1,2 @@
 # Genetic-Neural-Network
-Demonstration training an artificial neural network with a genetic algorithm.
+Demonstrating the training of an artificial neural network with a genetic algorithm.
