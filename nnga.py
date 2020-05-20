@@ -51,7 +51,6 @@ class NeuralNetwork:
         time.sleep(SLEEP_TIMEOUT)
 
     def genetic_crossover(self, parent_a, parent_b):
-
         temp_network = copy.deepcopy(parent_a)
 
         for _ in range(self.network[0].bias_nitem):
@@ -67,7 +66,6 @@ class NeuralNetwork:
         return temp_network
 
     def genetic_mutation(self, child):
-
         temp_network = copy.deepcopy(child)
 
         for _ in range(self.network[0].bias_nitem):
@@ -84,7 +82,6 @@ class NeuralNetwork:
         return temp_network
 
     def natural_selection(self):
-
         score_list = list(zip(self.network, self.cost_function()))
         score_list.sort(key=lambda x: x[1])
         score_list = [object[0] for object in score_list]
@@ -94,6 +91,7 @@ class NeuralNetwork:
 
         retain_ordinary = int(
             (self.selection_rate - best_retain) * self.retention_rate)
+
         for _ in range(random.randint(0, retain_ordinary)):
             score_list_best.append(random.choice(score_list[best_retain:]))
 
@@ -147,14 +145,6 @@ class Connections:
         self.weight_nitem = sum(
             [self.weights[i].size for i in range(self.layer_count - 2)])
 
-    def forward_propagation(self, val):
-        for biases, weights in zip(self.biases, self.weights):
-            val = self.sigmoid(np.dot(weights, val) + biases)
-        return val
-
-    def sigmoid(self, z):
-        return 1.0/(1.0 + np.exp(-z))
-
     def score(self, features, classes):
         score = 0
         for i in range(features.shape[0]):
@@ -169,9 +159,16 @@ class Connections:
             output = self.forward_propagation(features[i].reshape(-1, 1))
             accuracy += int(np.argmax(output) == np.argmax(classes[i]))
         return accuracy / features.shape[0] * 100
+        
+    def forward_propagation(self, val):
+        for biases, weights in zip(self.biases, self.weights):
+            val = self.sigmoid(np.dot(weights, val) + biases)
+        return val
+
+    def sigmoid(self, z):
+        return 1.0/(1.0 + np.exp(-z))
 
 def fetch_dataset():
-
     dataset = pd.read_excel('dataset.xlsx')
 
     sepal_width = np.array(dataset['Sepal width'])
@@ -201,7 +198,6 @@ def fetch_dataset():
 
 
 def distribute_data(data):
-
     features = data[:, :4]
     classes = data[:, 4]
     classes = classes.reshape(-1, 1)
@@ -213,7 +209,6 @@ def distribute_data(data):
 
 
 def separate_data(features, classes):
-
     size = int(CROSS * features.shape[0])
 
     features_a = features[: size, :]
@@ -226,7 +221,6 @@ def separate_data(features, classes):
 
 
 def main():
-
     data = fetch_dataset()
 
     # shuffle dataset
@@ -244,6 +238,19 @@ def main():
 
     # start training
     neural_network.train()
+
+    """
+                TWO-FOLD CROSS VALIDATION
+    1. Train
+    2. Get training accuracy on first training set
+    3. Update parameters of features and classes
+    4. Test on testing dataset
+    5. Train on previous testing data
+    6. Get training accuracy on second training set
+    7. Update parameters of features and classes
+    8. Test on previous training dataset
+    
+    """
 
     # get training accuracy on first training set
     print("Accuracy on training dataset (Phase 1): ",
