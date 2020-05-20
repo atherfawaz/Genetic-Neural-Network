@@ -53,12 +53,12 @@ class NeuralNetwork:
     def genetic_crossover(self, parent_a, parent_b):
         temp_network = copy.deepcopy(parent_a)
 
-        for _ in range(self.network[0].bias_nitem):
+        for _ in range(self.network[0].bias_sum):
             layer, point = self.fetch_point('bias')
             if (random.uniform(0, 1) < self.crossover_rate):
                 temp_network.biases[layer][point] = parent_b.biases[layer][point]
 
-        for _ in range(self.network[0].weight_nitem):
+        for _ in range(self.network[0].weight_sum):
             layer, point = self.fetch_point('weight')
             if (random.uniform(0, 1) < self.crossover_rate):
                 temp_network.weights[layer][point] = parent_b.weights[layer][point]
@@ -68,12 +68,12 @@ class NeuralNetwork:
     def genetic_mutation(self, child):
         temp_network = copy.deepcopy(child)
 
-        for _ in range(self.network[0].bias_nitem):
+        for _ in range(self.network[0].bias_sum):
             layer, point = self.fetch_point('bias')
             if (random.uniform(0, 1) < self.mutation_rate):
                 temp_network.biases[layer][point] += random.uniform(-0.5, 0.5)
 
-        for _ in range(self.network[0].weight_nitem):
+        for _ in range(self.network[0].weight_sum):
             layer, point = self.fetch_point('weight')
             if (random.uniform(0, 1) < self.mutation_rate):
                 temp_network.weights[layer][point[0],
@@ -141,8 +141,8 @@ class Connections:
         self.weights = [np.random.randn(y, x)
                         for x, y in zip(size[:-1], size[1:])]
 
-        self.bias_nitem = sum(size[1:])
-        self.weight_nitem = sum(
+        self.bias_sum = sum(size[1:])
+        self.weight_sum = sum(
             [self.weights[i].size for i in range(self.layer_count - 2)])
 
     def score(self, features, classes):
